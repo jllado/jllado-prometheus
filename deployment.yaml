@@ -1,0 +1,54 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: prometheus
+spec:
+  selector:
+    app: prometheus
+  ports:
+    - port: 9090
+      targetPort: 9090
+  type: LoadBalancer
+  sessionAffinity: None
+  externalTrafficPolicy: Cluster
+status:
+  loadBalancer: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: prometheus
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v2.18.1
+          imagePullPolicy: IfNotPresent
+          args:
+            - "--config.file=/etc/prometheus/prometheus.yml"
+            - '--storage.tsdb.path=/data'
+          volumeMounts:
+            - mountPath: /etc/prometheus/prometheus.yml
+              name: config-file
+            - mountPath: /data
+              name: data
+      volumes:
+        - name: config-file
+          hostPath:
+            path: /opt/servers/jenkins/workspace/prometheus/prometheus.yml
+        - name: data
+          hostPath:
+            path: /opt/servers/prometheus/data
